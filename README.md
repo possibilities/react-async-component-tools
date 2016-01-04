@@ -4,5 +4,8 @@ Load react components asynchronously
 
 ## TODO
 
-* More import specifier types
+* Don't assume `ImportDefaultSpecifier`
+  - [ ] Support `import { Foo } from '../Foo'
+  - [ ] Support `import { Foo as Bar } from '../Foo'
+  - [ ] Maybe support `import * as FooComponents from '../Foo'
 * Without JSX
