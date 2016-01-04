@@ -10,7 +10,7 @@ describe('Ambient decorator plugin', () => {
   fs.readdirSync(fixturesDir).map((exampleFileName) => {
     const exampleName = exampleFileName.split('-').join(' ')
 
-    it(`transpiles ${exampleName} example`, () => {
+    it(`transpiles "${exampleName}" example`, () => {
 
       const fixtureDir = path.join(fixturesDir, exampleFileName)
       const actualPath = path.join(fixtureDir, 'actual.js')

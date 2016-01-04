@@ -122,13 +122,42 @@ const applyDecoratorToComponentClass = (componentClass, loadingElement, decorato
       })
     })
   `)
+
   const decorator = buildDecorator({
     IMPORT_NAME: t.identifier(decoratorInfo.name),
     IMPORT_NAME_STRING: t.stringLiteral(decoratorInfo.name),
     SOURCE_PATH: t.stringLiteral(decoratorInfo.source),
     LOADING_ELEMENT: loadingElement
   })
+
   componentClass.decorators.push(decorator)
+}
+
+// This visitor looks for JSX tags that reference async components and injects
+// `injectAsyncComponent` decorator into the calling method
+const jsxElementVisitor = {
+  JSXElement(jsxElementPath) {
+    const { asyncComponentNames, classMethodPath } = this
+    const jsxNode = jsxElementPath.node
+    const { name } = jsxNode.openingElement.name
+
+    if (asyncComponentNames.indexOf(name) >= 0) {
+      // Build up the fragment
+      const extractFromPropsBuilder = template(`
+        const { COMPONENT_NAME } = this.props
+      `)
+
+      const extractFromProps = extractFromPropsBuilder({
+        COMPONENT_NAME: t.identifier(name)
+      })
+
+      // Inject the generated fragment
+      classMethodPath.node.body.body = [
+        extractFromProps,
+        ...classMethodPath.node.body.body,
+      ]
+    }
+  }
 }
 
 // This visitor modifies the render method so it properly destructures the
@@ -138,29 +167,10 @@ const methodVisitor = {
   ClassMethod(classMethodPath) {
     const { asyncComponentNames } = this
 
-    // Bail if we're not in `render()`
-    if (classMethodPath.node.key.name !== 'render') {
-      return
-    }
-
-    // Build up the fragment
-    const extractInjectedComponent = asyncComponentNames.map((componentName) => {
-      const extractInjectedComponentBuilder = template(`
-        const { COMPONENT_NAME } = this.props
-      `)
-
-      const extractInjectedComponentExpression = extractInjectedComponentBuilder({
-        COMPONENT_NAME: t.identifier(componentName)
-      })
-
-      return extractInjectedComponentExpression
+    classMethodPath.traverse(jsxElementVisitor, {
+      classMethodPath,
+      asyncComponentNames,
     })
-
-    // Inject the generated fragment
-    classMethodPath.node.body.body = [
-      ...extractInjectedComponent,
-      ...classMethodPath.node.body.body,
-    ]
   }
 }
 
