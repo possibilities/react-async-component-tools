@@ -12,7 +12,29 @@ Similar to [`react-proxy-loader`](https://github.com/webpack/react-proxy-loader)
 
 ## Usage
 
-TODO
+Using the babel plugin:
+
+```
+import Foo from '../Foo'
+import Bar from '../Bar'
+import Baz from '../Baz'
+
+// Foo and Bar will load asynchronously, Baz will load normally
+@asyncComponent(Foo)
+@asyncComponent(Bar)
+@asyncLoadingElement(<div>loading...</div>)
+export default class Example {
+  render() {
+    return <div>
+      {this.props.shouldShowFoo && <Foo color="red" />}
+      {this.props.shouldShowBar && <Bar color="red" />}
+      {this.props.shouldShowBaz && <Baz color="red" />}
+    </div>
+  }
+}
+```
+
+TODO add more info about usage
 
 ## TODO
 
