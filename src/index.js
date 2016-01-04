@@ -13,7 +13,7 @@ const insertDecoratorImportIntoProgramBody = (programNode) => {
   const buildImport = template(`const { IMPORT_NAME } = require(SOURCE)`)
   const decoratorImport = buildImport({
     IMPORT_NAME: t.identifier('injectAsyncComponent'),
-    SOURCE: t.stringLiteral('babel-plugin-async-component/lib/AsyncComponentContainer')
+    SOURCE: t.stringLiteral('react-async-component-tools/lib/AsyncComponentContainer')
   })
 
   // And inject it
