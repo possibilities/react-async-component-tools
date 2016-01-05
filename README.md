@@ -27,8 +27,8 @@ export default class Example {
   render() {
     return <div>
       {this.props.shouldShowFoo && <Foo color="red" />}
-      {this.props.shouldShowBar && <Bar color="red" />}
-      {this.props.shouldShowBaz && <Baz color="red" />}
+      {this.props.shouldShowBar && <Bar color="blue" />}
+      {this.props.shouldShowBaz && <Baz color="green" />}
     </div>
   }
 }
