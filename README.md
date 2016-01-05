@@ -43,5 +43,4 @@ TODO add more info about usage
   - [ ] Support `import { Foo as Bar } from '../Foo'
   - [ ] Maybe support `import * as FooComponents from '../Foo'
 * Without JSX
-* More than one identifier in a method will probably inject more than one constant, prevent that
 * Organize repo sensibly (we provide 3 methods but the repo is named and organized only for the babel plugin). Will probably look like a mini-mono-repo when complete (i.e. one repo with 3 packages).

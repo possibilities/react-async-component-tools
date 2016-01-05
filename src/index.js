@@ -141,6 +141,18 @@ const jsxElementVisitor = {
     const jsxNode = jsxElementPath.node
     const { name } = jsxNode.openingElement.name
 
+    // A place to keep track of references we've added so we don't add the
+    // same one more than once.
+    if (!classMethodPath.asyncComponentReferences) {
+      classMethodPath.asyncComponentReferences = {}
+    }
+    // Bail if we've been here before for this reference
+    if (classMethodPath.asyncComponentReferences[name]) {
+      return
+    }
+    // Mark this path visited for this reference
+    classMethodPath.asyncComponentReferences[name] = true
+
     if (asyncComponentNames.indexOf(name) >= 0) {
       // Build up the fragment
       const extractFromPropsBuilder = template(`
