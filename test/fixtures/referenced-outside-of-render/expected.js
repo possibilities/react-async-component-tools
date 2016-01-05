@@ -1,6 +1,6 @@
 const {
   injectAsyncComponent
-} = require("babel-plugin-async-component/lib/AsyncComponentContainer");
+} = require("react-async-component-tools/lib/AsyncComponentContainer");
 
 export default injectAsyncComponent("Foo", <div>loading...</div>, onReady => {
   require.ensure("../Foo", require => {
