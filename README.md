@@ -4,7 +4,7 @@ Tools for declaratively loading react components on-demand
 
 ## Summary
 
-Similar to [`react-proxy-loader`](https://github.com/webpack/react-proxy-loader) this module allows you to declaratively split components using webpack's "[code splitting](https://webpack.github.io/docs/code-splitting.html)" mechanism. This can be done 3 different ways:
+Similar to [`react-proxy-loader`](https://github.com/webpack/react-proxy-loader) this module allows you to declaratively split components using webpack's "[code splitting](https://webpack.github.io/docs/code-splitting.html)" mechanism. There are 3 available methods:
 
 1. Manually wrapping components in provided "higher order component" (HoC)
 1. Wrapping components in provided decorator that applies the HoC in method No. 1
@@ -34,7 +34,7 @@ export default class Example {
 }
 ```
 
-TODO add more info about usage
+TODO add examples for methods 1 + 2
 
 ## TODO
 
