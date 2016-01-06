@@ -333,7 +333,6 @@ const classVisitor = {
     ))
 
     // Drop into render method for additional modifications
-    // TODO make this more robust, i.e. component won't always be in `render()`
     classDeclarationPath.traverse(methodVisitor, {
       asyncComponentNames
     })
