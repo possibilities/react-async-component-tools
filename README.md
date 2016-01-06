@@ -1,4 +1,4 @@
-# React async component tools
+# React async component tools [![Build Status](https://travis-ci.org/possibilities/react-async-component-tools.svg?branch=ci)](https://travis-ci.org/possibilities/react-async-component-tools)
 
 Tools for declaratively loading react components on-demand
 
