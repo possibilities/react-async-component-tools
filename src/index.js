@@ -23,22 +23,13 @@ const insertDecoratorImportIntoProgramBody = (programNode) => {
 // The ambient `asyncLoadingElement` decorator is used to provide a JSX element.
 // Here we extract that argument for use in the decorator we eventually inject.
 const extractLoadingElementFromDecorator = (decorator) => {
-  const misuseErrorMessage = '`@asyncLoadingElement` decorator requires a '
-    + 'single argument which must be a JSX tag'
-
   // Error out when no loading element is specified
   if (decorator.expression.arguments.length !== 1) {
-    throw new Error(misuseErrorMessage)
+    throw new Error('`@asyncLoadingElement` decorator requires a single argument')
   }
 
-  // Extract the loading element
+  // Extract the loading element and return it
   const [ loadingElement ] = decorator.expression.arguments
-
-  // Validate the loading element
-  if (!loadingElement || !t.isJSXElement(loadingElement)) {
-    throw new Error(misuseErrorMessage)
-  }
-
   return loadingElement
 }
 
@@ -195,42 +186,50 @@ const applyDecoratorToComponentClass = (componentClass, loadingElement, decorato
   }))
 }
 
-// This visitor looks for JSX tags that reference async components and injects
-// `injectAsyncComponent` decorator into the calling method
-const jsxElementVisitor = {
+const injectComponentReferenceIntoClassMethod = (name, classMethodPath, asyncComponentNames) => {
+  // A place to keep track of references we've added so we don't add the
+  // same one more than once.
+  if (!classMethodPath.asyncComponentReferences) {
+    classMethodPath.asyncComponentReferences = {}
+  }
+  // Bail if we've been here before for this reference
+  if (classMethodPath.asyncComponentReferences[name]) {
+    return
+  }
+  // Mark this path visited for this reference
+  classMethodPath.asyncComponentReferences[name] = true
+
+  if (asyncComponentNames.indexOf(name) >= 0) {
+    // Build up the fragment
+    const extractFromPropsBuilder = template(`
+      const { COMPONENT_NAME } = this.props
+    `)
+
+    const extractFromProps = extractFromPropsBuilder({
+      COMPONENT_NAME: t.identifier(name)
+    })
+
+    // Inject the generated fragment
+    classMethodPath.node.body.body = [
+      extractFromProps,
+      ...classMethodPath.node.body.body,
+    ]
+  }
+}
+
+// This visitor looks for JSX tags and identifiers that reference async
+// components and injects a destructuring of `this.props` to bring the injected
+// async component into scope.
+const referencesToAsyncComponentVisitor = {
   JSXElement(jsxElementPath) {
-    const { asyncComponentNames, classMethodPath } = this
-    const jsxNode = jsxElementPath.node
-    const { name } = jsxNode.openingElement.name
-
-    // A place to keep track of references we've added so we don't add the
-    // same one more than once.
-    if (!classMethodPath.asyncComponentReferences) {
-      classMethodPath.asyncComponentReferences = {}
-    }
-    // Bail if we've been here before for this reference
-    if (classMethodPath.asyncComponentReferences[name]) {
-      return
-    }
-    // Mark this path visited for this reference
-    classMethodPath.asyncComponentReferences[name] = true
-
-    if (asyncComponentNames.indexOf(name) >= 0) {
-      // Build up the fragment
-      const extractFromPropsBuilder = template(`
-        const { COMPONENT_NAME } = this.props
-      `)
-
-      const extractFromProps = extractFromPropsBuilder({
-        COMPONENT_NAME: t.identifier(name)
-      })
-
-      // Inject the generated fragment
-      classMethodPath.node.body.body = [
-        extractFromProps,
-        ...classMethodPath.node.body.body,
-      ]
-    }
+    const { name } = jsxElementPath.node.openingElement.name
+    const { classMethodPath, asyncComponentNames } = this
+    injectComponentReferenceIntoClassMethod(name, classMethodPath, asyncComponentNames)
+  },
+  Identifier(identifierPath) {
+    const { name } = identifierPath.node
+    const { classMethodPath, asyncComponentNames } = this
+    injectComponentReferenceIntoClassMethod(name, classMethodPath, asyncComponentNames)
   }
 }
 
@@ -241,7 +240,7 @@ const methodVisitor = {
   ClassMethod(classMethodPath) {
     const { asyncComponentNames } = this
 
-    classMethodPath.traverse(jsxElementVisitor, {
+    classMethodPath.traverse(referencesToAsyncComponentVisitor, {
       classMethodPath,
       asyncComponentNames,
     })
