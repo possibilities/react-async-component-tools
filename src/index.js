@@ -50,7 +50,7 @@ const extractComponentNameFromDecorator = (decorator) => {
   const [ asyncComponentIdentifier ] = decorator.expression.arguments
 
   // Validate the identifier
-  if (!asyncComponentIdentifier || !t.isIdentifier(asyncComponentIdentifier)) {
+  if (!t.isIdentifier(asyncComponentIdentifier)) {
     throw new Error(misuseErrorMessage)
   }
 
