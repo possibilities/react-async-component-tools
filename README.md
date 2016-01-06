@@ -39,7 +39,8 @@ TODO add examples for methods 1 + 2
 ## TODO
 
 * Don't assume `ImportDefaultSpecifier` (See https://github.com/babel/babel/blob/master/doc/ast/spec.md#importspecifier)
-  - [ ] Support `import { Foo } from '../Foo'
+  - [x] Support `import { Foo } from '../Foo'
+  - [x] Support `import { Foo, NonAsync } from '../Foo'
   - [ ] Support `import { Foo as Bar } from '../Foo'
   - [ ] Maybe support `import * as FooComponents from '../Foo'
 * Without JSX

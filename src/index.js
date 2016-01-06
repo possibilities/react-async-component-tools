@@ -72,65 +72,127 @@ const extractComponentNamesFromDecorators = (decorators) => {
 }
 
 // Get all of a program's import statements that are implicated by
-// `asyncComponent` decorators
+// `asyncComponent` decorators by iterating all of their specifiers
+// and looking for matches in list of async component names that were
+// previously extracted from the ambient decorators.
 const filterAsyncImports = (programImports, asyncComponentNames) => {
   return programImports.filter((programImport) => {
-    // TODO support more diverse specifiers like { Foo }, and { Foo, Bar }
-    const [ firstSpecifier ] = programImport.specifiers
-    return asyncComponentNames.indexOf(firstSpecifier.local.name) >= 0
+    return programImport.specifiers.some((specifier) => {
+      return asyncComponentNames.indexOf(specifier.local.name) >= 0
+    })
   })
 }
 
 // Generates a lookup table of import name to source
 // ```
 // import Foo from '../Foo'
-// import Bar from '../Bar'
+// import { Bar } from '../Bar'
 // ```
 // yields:
 // ```
 // {
-//   Foo: '../Foo',
-//   Bar: '../Bar',
+//   { name: 'Foo', source: '../Foo', isDefaultImport: true },
+//   { name: 'Bar', source: '../Bar', isDefaultImport: false }
 // }
 // ```
-const importNamesToSources = (asyncImports) => {
-  return asyncImports.map(asyncImport => {
-    // TODO support more diverse specifiers like { Foo }, and { Foo, Bar }
-    const [ firstSpecifier ] = asyncImport.specifiers
-    return {
-      name: firstSpecifier.local.name,
-      source: asyncImport.source.value,
-    }
-  })
+const importNamesToSources = (asyncComponentNames, asyncImports) => {
+  // For each known import statement that brings in an async component
+  return asyncImports.reduce((importsAcc, asyncImport) => {
+    // For each specifier
+    asyncImport.specifiers.forEach((specifier) => {
+      // If it's in the whitelist of async component names push its info
+      // into the accumulator
+      if (asyncComponentNames.indexOf(specifier.local.name) >= 0) {
+        importsAcc.push({
+          name: specifier.local.name,
+          source: asyncImport.source.value,
+          isDefaultImport: t.isImportDefaultSpecifier(specifier),
+        })
+      }
+    })
+    return importsAcc
+  }, [])
 }
 
-// Given a list of imports remove them from a given program
-const deleteImportsFromProgram = (deletableImports, programNode) => {
-  return programNode.body = programNode.body.filter(bodyNode => {
-    return deletableImports.indexOf(bodyNode) === -1
-  })
+// Given a list of imports remove them from the program
+const removeImportsFromProgram = (deletableSpecifierNames, deletableImports, programNode) => {
+
+  // Reduce over the program's nodes
+  programNode.body = programNode.body.reduce((bodyAcc, bodyNode) => {
+
+    // If it's not deletable, keep it
+    if (deletableImports.indexOf(bodyNode) === -1) {
+      bodyAcc.push(bodyNode)
+    } else {
+
+      // Figure out if it's any of the specifiers are non-default (which I
+      // believe means they all are?)
+      const hasNonDefaultImportSpecifiers = bodyNode.specifiers.some((specifier) => {
+        return t.isImportSpecifier(specifier)
+      })
+
+      // If any of the specifiers are non-default
+      if (hasNonDefaultImportSpecifiers) {
+
+        // Go ahead and edit the specifiers list removing any that represent
+        // a component we want to load async
+        bodyNode.specifiers = bodyNode.specifiers.filter((specifier) => {
+          return deletableSpecifierNames.indexOf(specifier.local.name) === -1
+        })
+
+        // If there are any specifiers left after that go ahead and keep the
+        // import statement
+        if (bodyNode.specifiers.length) {
+          bodyAcc.push(bodyNode)
+        }
+      }
+    }
+    return bodyAcc
+  }, [])
 }
 
 // Given all the appropriate metadata inject a `injectAsyncComponent` decorator
 // around a given react component
 const applyDecoratorToComponentClass = (componentClass, loadingElement, decoratorInfo) => {
+
+  // Appropriate templates for the parts of the decorator
+  const buildDefaultImportDeclaration = template(`
+    const IMPORT_NAME = require(SOURCE_PATH).default
+  `)
+  const buildNonDefaultImportDeclaration = template(`
+    const { IMPORT_NAME } = require(SOURCE_PATH).default
+  `)
   const buildDecorator = template(`
     injectAsyncComponent(IMPORT_NAME_STRING, LOADING_ELEMENT, (onReady) => {
       require.ensure(SOURCE_PATH, (require) => {
-        const IMPORT_NAME = require(SOURCE_PATH).default
+        IMPORT_DECLARATION
         onReady(IMPORT_NAME)
       })
     })
   `)
 
-  const decorator = buildDecorator({
+  // Generate the import declaration based on the type of import
+  let importDeclaration
+  if (decoratorInfo.isDefaultImport) {
+    importDeclaration = buildDefaultImportDeclaration({
+      IMPORT_NAME: t.identifier(decoratorInfo.name),
+      SOURCE_PATH: t.stringLiteral(decoratorInfo.source),
+    })
+  } else {
+    importDeclaration = buildNonDefaultImportDeclaration({
+      IMPORT_NAME: t.identifier(decoratorInfo.name),
+      SOURCE_PATH: t.stringLiteral(decoratorInfo.source),
+    })
+  }
+
+  // Generate the decorator AST from template and add it to the class's decorators
+  componentClass.decorators.push(buildDecorator({
     IMPORT_NAME: t.identifier(decoratorInfo.name),
     IMPORT_NAME_STRING: t.stringLiteral(decoratorInfo.name),
     SOURCE_PATH: t.stringLiteral(decoratorInfo.source),
-    LOADING_ELEMENT: loadingElement
-  })
-
-  componentClass.decorators.push(decorator)
+    LOADING_ELEMENT: loadingElement,
+    IMPORT_DECLARATION: importDeclaration,
+  }))
 }
 
 // This visitor looks for JSX tags that reference async components and injects
@@ -245,7 +307,10 @@ const classVisitor = {
     )
 
     // Get a lookup table of import name to source
-    const importNameToSourceLookup = importNamesToSources(asyncImports)
+    const importNameToSourceLookup = importNamesToSources(
+      asyncComponentNames,
+      asyncImports
+    )
 
     // Delete the ambient loading element decorator
     const loadingElementDecoratorIndex = decorators.indexOf(loadingElementDecorator)
@@ -259,7 +324,7 @@ const classVisitor = {
     })
 
     // Get rid of the real imports as these will be loaded on demand
-    deleteImportsFromProgram(asyncImports, programNode)
+    removeImportsFromProgram(asyncComponentNames, asyncImports, programNode)
 
     // Add the real decorator to the component class
     importNameToSourceLookup.forEach(applyDecoratorToComponentClass.bind(null,
