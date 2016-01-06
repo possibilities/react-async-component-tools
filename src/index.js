@@ -28,7 +28,7 @@ const extractLoadingElementFromDecorator = (decorator) => {
 
   // Error out when no loading element is specified
   if (decorator.expression.arguments.length !== 1) {
-    throw Error(misuseErrorMessage)
+    throw new Error(misuseErrorMessage)
   }
 
   // Extract the loading element
@@ -36,7 +36,7 @@ const extractLoadingElementFromDecorator = (decorator) => {
 
   // Validate the loading element
   if (!loadingElement || !t.isJSXElement(loadingElement)) {
-    throw Error(misuseErrorMessage)
+    throw new Error(misuseErrorMessage)
   }
 
   return loadingElement
@@ -52,7 +52,7 @@ const extractComponentNameFromDecorator = (decorator) => {
 
   // Error out if we don't have any arguments
   if (decorator.expression.arguments.length !== 1) {
-    throw Error(misuseErrorMessage)
+    throw new Error(misuseErrorMessage)
   }
 
   // Extract the identifier
@@ -60,7 +60,7 @@ const extractComponentNameFromDecorator = (decorator) => {
 
   // Validate the identifier
   if (!asyncComponentIdentifier || !t.isIdentifier(asyncComponentIdentifier)) {
-    throw Error(misuseErrorMessage)
+    throw new Error(misuseErrorMessage)
   }
 
   return asyncComponentIdentifier.name
